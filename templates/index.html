@@ -1,0 +1,1059 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>p5 Vibe Coder</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/dracula.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/javascript/javascript.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/edit/closebrackets.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/edit/matchbrackets.min.js"></script>
+
+<style>
+:root {
+  --bg:          #0e0e14;
+  --surface:     #13131c;
+  --surface2:    #1b1b28;
+  --border:      #252535;
+  --border2:     #323248;
+  --text:        #ddddf0;
+  --text2:       #6a6a90;
+  --text3:       #3a3a58;
+  --accent:      #f06292;
+  --accent-dim:  rgba(240,98,146,0.12);
+  --accent-glow: rgba(240,98,146,0.25);
+  --green:       #80cbc4;
+  --radius:      6px;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; background: var(--bg); color: var(--text); font-family: 'Plus Jakarta Sans', sans-serif; font-size: 13px; overflow: hidden; }
+
+/* ── Topbar ─────────────────────────────────────────── */
+.topbar {
+  height: 46px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 10px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+  position: relative;
+  z-index: 100;
+}
+
+.logo {
+  font-weight: 700;
+  font-size: 15px;
+  letter-spacing: -0.5px;
+  color: var(--accent);
+  padding-right: 8px;
+  white-space: nowrap;
+  text-shadow: 0 0 20px var(--accent-glow);
+}
+
+.sep { width: 1px; height: 18px; background: var(--border); margin: 0 3px; flex-shrink: 0; }
+.spacer { flex: 1; }
+
+.sketch-name {
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius);
+  color: var(--text);
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  padding: 4px 8px;
+  width: 190px;
+  outline: none;
+  transition: border-color 0.15s, background 0.15s;
+}
+.sketch-name:hover  { border-color: var(--border2); }
+.sketch-name:focus  { border-color: var(--accent); background: var(--surface2); }
+
+/* ── Buttons ─────────────────────────────────────────── */
+.btn {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 5px 10px;
+  border: 1px solid var(--border2);
+  border-radius: var(--radius);
+  background: none;
+  color: var(--text2);
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 12px; font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: border-color 0.12s, color 0.12s, background 0.12s;
+}
+.btn:hover         { border-color: var(--text2); color: var(--text); }
+.btn.accent        { background: var(--accent); border-color: var(--accent); color: #1a0812; font-weight: 700; }
+.btn.accent:hover  { filter: brightness(1.12); }
+.btn.run           { border-color: var(--green); color: var(--green); }
+.btn.run:hover     { background: var(--green); color: #081a18; }
+.btn.icon          { padding: 5px 7px; }
+
+/* ── Dropdown ────────────────────────────────────────── */
+.dd { position: relative; }
+.dd-menu {
+  position: absolute; top: calc(100% + 5px); left: 0;
+  background: var(--surface2);
+  border: 1px solid var(--border2);
+  border-radius: var(--radius);
+  min-width: 190px;
+  z-index: 500;
+  padding: 4px;
+  display: none;
+  box-shadow: 0 12px 32px rgba(0,0,0,0.6);
+}
+.dd.open .dd-menu { display: block; }
+.dd-item {
+  padding: 8px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+  color: var(--text);
+  transition: background 0.1s;
+}
+.dd-item:hover { background: var(--border); }
+.dd-item .sub { font-size: 10px; color: var(--text3); margin-top: 2px; }
+
+.model-sel {
+  background: var(--surface2); border: 1px solid var(--border2); border-radius: var(--radius);
+  color: var(--text2); font-family: 'Plus Jakarta Sans', sans-serif; font-size: 12px;
+  padding: 5px 8px; cursor: pointer; outline: none; max-width: 155px;
+}
+
+/* ── Workspace ───────────────────────────────────────── */
+.workspace { display: flex; height: calc(100vh - 46px); overflow: hidden; }
+
+.pane { display: flex; flex-direction: column; overflow: hidden; border-right: 1px solid var(--border); }
+.pane:last-child { border-right: none; }
+
+.editor-pane  { flex: 1; min-width: 0; }
+.preview-pane { flex: 1; min-width: 0; background: #000; }
+.ai-pane      { width: 296px; min-width: 264px; flex-shrink: 0; background: var(--surface); }
+
+.pane-bar {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 6px 12px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+  flex-shrink: 0;
+  font-size: 10px; font-weight: 700; letter-spacing: 1px;
+  text-transform: uppercase; color: var(--text2);
+}
+.pane-bar kbd {
+  font-family: 'JetBrains Mono', monospace; font-size: 10px;
+  color: var(--text3); background: var(--surface2); border: 1px solid var(--border2);
+  padding: 1px 5px; border-radius: 3px;
+}
+
+/* ── CodeMirror overrides ────────────────────────────── */
+.editor-body    { flex: 1; overflow: hidden; display: flex; flex-direction: column; }
+.CodeMirror     { flex: 1; height: 100% !important; font-family: 'JetBrains Mono', monospace !important; font-size: 12.5px !important; line-height: 1.7 !important; background: #0e0e14 !important; }
+.CodeMirror-gutters { background: #0e0e14 !important; border-right: 1px solid var(--border) !important; }
+.CodeMirror-linenumber { color: var(--text3) !important; }
+.CodeMirror-scroll { height: 100%; }
+.CodeMirror-cursor { border-left-color: var(--accent) !important; }
+.CodeMirror-selected { background: var(--accent-dim) !important; }
+
+/* ── Preview ─────────────────────────────────────────── */
+.preview-wrap {
+  flex: 1; position: relative; overflow: hidden; min-height: 0;
+}
+.preview-placeholder {
+  position: absolute; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  flex-direction: column; gap: 10px; color: var(--text3); font-size: 12px; text-align: center;
+  pointer-events: none;
+}
+.preview-placeholder .glyph { font-size: 28px; opacity: 0.35; margin-bottom: 4px; }
+#preview-frame {
+  position: absolute; inset: 0;
+  width: 100%; height: 100%;
+  border: none; display: block;
+}
+
+/* ── Status bar ──────────────────────────────────────── */
+.status-bar {
+  display: flex; align-items: center; gap: 14px;
+  padding: 0 10px; height: 22px;
+  border-top: 1px solid var(--border); background: var(--surface);
+  flex-shrink: 0; font-size: 10px; color: var(--text3);
+  font-family: 'JetBrains Mono', monospace;
+}
+.s-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--text3); flex-shrink: 0; }
+.s-dot.on  { background: var(--green);  box-shadow: 0 0 6px var(--green); }
+.s-dot.err { background: #ef5350; box-shadow: 0 0 6px #ef5350; }
+.s-right { margin-left: auto; }
+.s-unsaved { color: var(--accent); }
+
+/* ── AI Pane ─────────────────────────────────────────── */
+.ai-history {
+  max-height: 108px; overflow-y: auto; padding: 8px;
+  border-bottom: 1px solid var(--border); scrollbar-width: thin;
+}
+.h-item {
+  padding: 5px 8px; border-radius: 4px; font-size: 11px; color: var(--text2);
+  background: var(--surface2); border-left: 2px solid var(--accent);
+  margin-bottom: 4px; cursor: pointer; transition: color 0.1s;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.h-item:last-child { margin-bottom: 0; }
+.h-item:hover { color: var(--text); }
+.h-empty { font-size: 11px; color: var(--text3); text-align: center; padding: 10px 0; }
+
+.ai-out-wrap {
+  flex: 1; overflow-y: auto; scrollbar-width: thin;
+  scrollbar-color: var(--border2) transparent;
+}
+.ai-out {
+  padding: 12px; font-family: 'JetBrains Mono', monospace; font-size: 11px;
+  line-height: 1.65; color: var(--text3); white-space: pre-wrap; word-break: break-all;
+}
+.ai-out.live { color: var(--text2); }
+.ai-placeholder { color: var(--text3); font-family: 'Plus Jakarta Sans', sans-serif; font-size: 11.5px; text-align: center; line-height: 1.8; padding: 20px 14px; }
+
+.ai-input-area { padding: 10px; border-top: 1px solid var(--border); flex-shrink: 0; display: flex; flex-direction: column; gap: 8px; }
+#ai-instr {
+  background: var(--surface2); border: 1px solid var(--border2); border-radius: var(--radius);
+  color: var(--text); font-family: 'Plus Jakarta Sans', sans-serif; font-size: 12px;
+  padding: 9px 11px; resize: none; outline: none; line-height: 1.5;
+  min-height: 68px; max-height: 130px; transition: border-color 0.15s;
+}
+#ai-instr:focus  { border-color: var(--accent); }
+#ai-instr::placeholder { color: var(--text3); }
+
+.ai-row { display: flex; gap: 6px; }
+.btn-gen {
+  flex: 1; padding: 8px; background: var(--accent); border: none; border-radius: var(--radius);
+  color: #1a0812; font-family: 'Plus Jakarta Sans', sans-serif; font-size: 12px; font-weight: 700;
+  cursor: pointer; transition: filter 0.12s;
+}
+.btn-gen:hover:not(:disabled)  { filter: brightness(1.12); }
+.btn-gen:disabled { opacity: 0.38; cursor: not-allowed; }
+
+.btn-undo2 {
+  padding: 8px 11px; background: none; border: 1px solid var(--border2);
+  border-radius: var(--radius); color: var(--text2);
+  font-family: 'Plus Jakarta Sans', sans-serif; font-size: 12px; cursor: pointer;
+  transition: all 0.12s;
+}
+.btn-undo2:hover:not(:disabled) { border-color: var(--text2); color: var(--text); }
+.btn-undo2:disabled { opacity: 0.28; cursor: not-allowed; }
+
+/* ── Sketch modal ────────────────────────────────────── */
+.overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.72);
+  z-index: 1000; display: none; align-items: center; justify-content: center;
+}
+.overlay.open { display: flex; }
+.modal {
+  background: var(--surface); border: 1px solid var(--border2); border-radius: 10px;
+  width: 460px; max-height: 68vh; display: flex; flex-direction: column;
+  box-shadow: 0 24px 72px rgba(0,0,0,0.8);
+}
+.modal-head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 18px; border-bottom: 1px solid var(--border);
+  font-size: 14px; font-weight: 600;
+}
+.btn-x { background: none; border: none; color: var(--text2); font-size: 20px; cursor: pointer; line-height: 1; padding: 0 4px; }
+.modal-body { flex: 1; overflow-y: auto; padding: 10px; }
+.sk-item {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 12px; border-radius: var(--radius); cursor: pointer;
+  border: 1px solid transparent; transition: all 0.1s; margin-bottom: 4px;
+}
+.sk-item:hover { background: var(--surface2); border-color: var(--border); }
+.sk-item.cur   { border-color: var(--accent); }
+.sk-name  { font-weight: 500; font-size: 13px; }
+.sk-date  { font-size: 10px; color: var(--text3); margin-top: 2px; }
+.sk-del   { background: none; border: none; color: var(--text3); font-size: 17px; cursor: pointer; opacity: 0; padding: 2px 5px; transition: opacity 0.1s, color 0.1s; }
+.sk-item:hover .sk-del { opacity: 1; }
+.sk-del:hover { color: #ef5350; }
+.modal-empty { text-align: center; padding: 32px; color: var(--text3); font-size: 12px; }
+
+/* ── Fullscreen ──────────────────────────────────────── */
+.fs-overlay { position: fixed; inset: 0; z-index: 2000; background: #000; display: none; }
+.fs-overlay.open { display: block; }
+.fs-overlay iframe { width: 100%; height: 100%; border: none; }
+.fs-exit {
+  position: fixed; top: 12px; right: 12px; z-index: 2001;
+  background: rgba(0,0,0,0.65); border: 1px solid rgba(255,255,255,0.18);
+  color: #fff; border-radius: var(--radius); padding: 5px 10px;
+  font-family: 'Plus Jakarta Sans', sans-serif; font-size: 12px; cursor: pointer;
+  transition: background 0.12s;
+}
+.fs-exit:hover { background: rgba(255,255,255,0.14); }
+
+/* ── Toast ───────────────────────────────────────────── */
+.toast {
+  position: fixed; bottom: 28px; left: 50%;
+  transform: translateX(-50%) translateY(8px);
+  background: var(--surface2); border: 1px solid var(--border2);
+  color: var(--text); padding: 7px 16px; border-radius: 20px;
+  font-size: 12px; z-index: 9000; opacity: 0;
+  transition: opacity 0.18s, transform 0.18s; pointer-events: none;
+}
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+/* ── Scrollbars ──────────────────────────────────────── */
+::-webkit-scrollbar { width: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+</style>
+</head>
+<body>
+
+<!-- ── Topbar ──────────────────────────────────────────────────────────────── -->
+<header class="topbar">
+  <span class="logo">p5 ✦</span>
+
+  <input class="sketch-name" id="sketch-name" type="text" value="Untitled Sketch"
+         onblur="saveSketchName()" onkeydown="if(event.key==='Enter')this.blur()">
+
+  <div class="sep"></div>
+
+  <button class="btn" onclick="openSketchModal()">
+    <svg width="12" height="10" viewBox="0 0 12 10" fill="none">
+      <rect width="12" height="2" rx="1" fill="currentColor"/>
+      <rect y="4" width="12" height="2" rx="1" fill="currentColor"/>
+      <rect y="8" width="12" height="2" rx="1" fill="currentColor"/>
+    </svg>
+    Sketches
+  </button>
+
+  <!-- Templates dropdown -->
+  <div class="dd" id="dd-templates">
+    <button class="btn" onclick="toggleDD('dd-templates')">
+      Templates
+      <svg width="9" height="6" viewBox="0 0 9 6" fill="none">
+        <path d="M1 1l3.5 3.5L8 1" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+      </svg>
+    </button>
+    <div class="dd-menu" id="dd-templates-menu"></div>
+  </div>
+
+  <div class="spacer"></div>
+
+  <button class="btn run" onclick="runSketch()">
+    <svg width="10" height="11" viewBox="0 0 10 11" fill="none">
+      <path d="M1.5 1.5l7 4-7 4V1.5z" fill="currentColor"/>
+    </svg>
+    Run
+  </button>
+
+  <button class="btn icon" onclick="enterFullscreen()" title="Fullscreen preview">
+    <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
+      <path d="M1 4V1h3M9 1h3v3M12 9v3H9M4 12H1V9" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+    </svg>
+  </button>
+
+  <button class="btn" onclick="exportSketch()">
+    <svg width="11" height="12" viewBox="0 0 11 12" fill="none">
+      <path d="M5.5 1v7.5M2 6l3.5 3.5L9 6M1 11h9" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+    Export
+  </button>
+
+  <button class="btn accent" onclick="saveSketch()">Save</button>
+</header>
+
+<!-- ── Workspace ───────────────────────────────────────────────────────────── -->
+<div class="workspace">
+
+  <!-- Editor -->
+  <div class="pane editor-pane">
+    <div class="pane-bar">
+      <span>Editor</span>
+      <kbd>Ctrl + Enter</kbd>
+    </div>
+    <div class="editor-body">
+      <textarea id="cm-editor"></textarea>
+    </div>
+    <div class="status-bar">
+      <div class="s-dot" id="s-dot"></div>
+      <span id="s-status">Ready</span>
+      <span id="s-cursor">Ln 1, Col 1</span>
+      <span class="s-right" id="s-save">Unsaved</span>
+    </div>
+  </div>
+
+  <!-- Preview -->
+  <div class="pane preview-pane">
+    <div class="pane-bar"><span>Preview</span></div>
+    <div class="preview-wrap">
+      <div class="preview-placeholder" id="preview-ph">
+        <div class="glyph">◈</div>
+        <div>Press <strong>Run</strong> or <kbd style="font-family:monospace;font-size:10px;background:var(--surface2);border:1px solid var(--border2);padding:1px 5px;border-radius:3px">Ctrl+Enter</kbd></div>
+      </div>
+      <iframe id="preview-frame" name="preview-frame" allow="microphone; camera"></iframe>
+    </div>
+  </div>
+
+  <!-- AI pane temporarily disabled -->
+
+</div>
+
+<!-- ── Sketch modal ─────────────────────────────────────────────────────────── -->
+<div class="overlay" id="modal-sketches" onclick="maybeCloseModal(event,'modal-sketches')">
+  <div class="modal">
+    <div class="modal-head">
+      Saved Sketches
+      <button class="btn-x" onclick="closeModal('modal-sketches')">×</button>
+    </div>
+    <div class="modal-body" id="modal-sketch-body">
+      <div class="modal-empty">No saved sketches yet</div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Fullscreen overlay ───────────────────────────────────────────────────── -->
+<div class="fs-overlay" id="fs-overlay">
+  <button class="fs-exit" onclick="exitFullscreen()">✕ Exit fullscreen</button>
+  <iframe id="fs-frame" name="fs-frame" allow="microphone; camera"></iframe>
+</div>
+
+<!-- Hidden forms — POST sketch code to Flask, rendered into the iframes directly -->
+<form id="run-form" method="POST" action="/api/preview" target="preview-frame" style="display:none">
+  <input type="hidden" name="code" id="run-code">
+</form>
+<form id="fs-form" method="POST" action="/api/preview" target="fs-frame" style="display:none">
+  <input type="hidden" name="code" id="fs-code">
+</form>
+
+<!-- ── Toast ───────────────────────────────────────────────────────────────── -->
+<div class="toast" id="toast"></div>
+
+<!-- ── Scripts ─────────────────────────────────────────────────────────────── -->
+<script>
+'use strict';
+
+// ── State ──────────────────────────────────────────────────────────────────────
+let editor;
+let currentId   = null;
+// AI pane is disabled for now, but keep state vars for safe future re-enable.
+let undoStack   = null;
+let isGenerating = false;
+let sketches    = [];
+let aiHistory   = [];
+
+// ── Templates ──────────────────────────────────────────────────────────────────
+const TEMPLATES = [
+  {
+    name: 'Basic Sketch', sub: 'Empty canvas',
+    code:
+`function setup() {
+  createCanvas(windowWidth, windowHeight);
+  textFont('monospace');
+}
+
+function draw() {
+  // Visible default animation so preview health is obvious.
+  background(10, 14, 22);
+  const x = width * 0.5 + sin(frameCount * 0.03) * min(width, 320) * 0.35;
+  const y = height * 0.5 + cos(frameCount * 0.02) * min(height, 240) * 0.25;
+
+  noStroke();
+  fill(70, 180, 255, 80);
+  circle(x, y, 140);
+  fill(255, 120, 180, 90);
+  circle(width - x, height - y, 110);
+
+  fill(235);
+  textSize(14);
+  textAlign(CENTER, CENTER);
+  text('p5 preview is running', width / 2, height / 2);
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+}`
+  },
+  {
+    name: 'Perlin Flow Field', sub: 'Noise-driven particles',
+    code:
+`let pts = [];
+const SCALE = 0.003;
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  colorMode(HSB, 360, 100, 100, 100);
+  for (let i = 0; i < 900; i++) {
+    pts.push(createVector(random(width), random(height)));
+  }
+  background(220, 20, 8);
+}
+
+function draw() {
+  fill(220, 20, 8, 7);
+  noStroke();
+  rect(0, 0, width, height);
+
+  for (let p of pts) {
+    let angle = noise(p.x * SCALE, p.y * SCALE, frameCount * 0.0006) * TWO_PI * 4;
+    let v = p5.Vector.fromAngle(angle);
+    v.mult(2);
+    p.add(v);
+
+    let hue = map(angle, 0, TWO_PI * 4, 160, 300);
+    stroke(hue, 80, 100, 55);
+    point(p.x, p.y);
+
+    if (p.x < 0 || p.x > width || p.y < 0 || p.y > height) {
+      p.set(random(width), random(height));
+    }
+  }
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+}`
+  },
+  {
+    name: 'Particle System', sub: 'Click to emit',
+    code:
+`let particles = [];
+
+class Particle {
+  constructor(x, y) {
+    this.pos  = createVector(x, y);
+    this.vel  = p5.Vector.random2D().mult(random(1, 5));
+    this.life = 255;
+    this.r    = random(3, 10);
+    this.hue  = random(180, 300);
+  }
+  update() {
+    this.vel.y   += 0.09;
+    this.vel.mult(0.98);
+    this.pos.add(this.vel);
+    this.life -= 3;
+  }
+  draw() {
+    noStroke();
+    colorMode(HSB, 360, 100, 100, 255);
+    fill(this.hue, 80, 100, this.life);
+    circle(this.pos.x, this.pos.y, this.r);
+  }
+  dead() { return this.life <= 0; }
+}
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+}
+
+function draw() {
+  colorMode(RGB);
+  fill(10, 10, 20, 22);
+  noStroke();
+  rect(0, 0, width, height);
+
+  if (mouseIsPressed) {
+    for (let i = 0; i < 6; i++) particles.push(new Particle(mouseX, mouseY));
+  }
+  for (let i = particles.length - 1; i >= 0; i--) {
+    particles[i].update();
+    particles[i].draw();
+    if (particles[i].dead()) particles.splice(i, 1);
+  }
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+}`
+  },
+  {
+    name: 'Sine Waves', sub: 'Layered oscillations',
+    code:
+`let waves = [];
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  colorMode(HSB, 360, 100, 100, 100);
+  for (let i = 0; i < 6; i++) {
+    waves.push({
+      freq:  random(0.004, 0.018),
+      amp:   random(30, 120),
+      speed: random(0.006, 0.028),
+      hue:   i * 60,
+      phase: random(TWO_PI)
+    });
+  }
+}
+
+function draw() {
+  background(240, 30, 8, 18);
+  for (let w of waves) {
+    beginShape();
+    noFill();
+    stroke(w.hue, 70, 100, 72);
+    strokeWeight(1.5);
+    for (let x = 0; x <= width; x += 4) {
+      curveVertex(x, height / 2 + sin(x * w.freq + w.phase) * w.amp);
+    }
+    endShape();
+    w.phase += w.speed;
+  }
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+}`
+  },
+  {
+    name: 'Audio Reactive', sub: 'Mic spectrum — click to start',
+    code:
+`let mic, fft;
+let started = false;
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  colorMode(HSB, 360, 100, 100, 100);
+  mic = new p5.AudioIn();
+  fft = new p5.FFT(0.8, 128);
+  fft.setInput(mic);
+}
+
+function draw() {
+  background(0, 0, 5, 22);
+
+  if (!started) {
+    fill(0, 0, 55);
+    noStroke();
+    textAlign(CENTER, CENTER);
+    textSize(14);
+    text('Click to start microphone', width / 2, height / 2);
+    return;
+  }
+
+  let spectrum = fft.analyze();
+  let bw = width / spectrum.length;
+  for (let i = 0; i < spectrum.length; i++) {
+    let h   = map(spectrum[i], 0, 255, 0, height * 0.85);
+    let hue = map(i, 0, spectrum.length, 200, 360);
+    let br  = map(spectrum[i], 0, 255, 20, 100);
+    noStroke();
+    fill(hue, 80, br, 85);
+    rect(i * bw, height - h, bw - 1, h);
+    fill(hue, 50, 100, 45);
+    rect(i * bw, height - h - 2, bw - 1, 2);
+  }
+}
+
+function mousePressed() {
+  if (!started) { mic.start(); started = true; }
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+}`
+  }
+];
+
+// ── Boot ───────────────────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', async () => {
+  initEditor();
+  buildTemplatesMenu();
+  await loadSketches();
+  runSketch();
+
+  document.addEventListener('click', e => {
+    if (!e.target.closest('.dd')) {
+      document.querySelectorAll('.dd.open').forEach(d => d.classList.remove('open'));
+    }
+  });
+
+  document.addEventListener('keydown', e => {
+    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+      e.preventDefault();
+      runSketch();
+    }
+    if (e.key === 'Escape') {
+      exitFullscreen();
+      closeModal('modal-sketches');
+    }
+  });
+});
+
+// ── Editor init ────────────────────────────────────────────────────────────────
+function initEditor() {
+  editor = CodeMirror.fromTextArea(document.getElementById('cm-editor'), {
+    mode: 'javascript',
+    theme: 'dracula',
+    lineNumbers: true,
+    autoCloseBrackets: true,
+    matchBrackets: true,
+    indentUnit: 2,
+    tabSize: 2,
+    indentWithTabs: false,
+    lineWrapping: false,
+    extraKeys: {
+      'Ctrl-Enter': runSketch,
+      'Cmd-Enter':  runSketch,
+    }
+  });
+
+  editor.setValue(TEMPLATES[0].code);
+  editor.getWrapperElement().style.height = '100%';
+
+  editor.on('cursorActivity', () => {
+    const c = editor.getCursor();
+    document.getElementById('s-cursor').textContent = `Ln ${c.line + 1}, Col ${c.ch + 1}`;
+  });
+
+  editor.on('change', markUnsaved);
+}
+
+// ── Models ─────────────────────────────────────────────────────────────────────
+async function loadModels() {
+  try {
+    const r = await fetch('/api/models');
+    const models = await r.json();
+    const sel = document.getElementById('model-sel');
+    sel.innerHTML = models.length
+      ? models.map(m => `<option value="${esc(m)}">${esc(m)}</option>`).join('')
+      : '<option value="">No models found</option>';
+  } catch {}
+}
+
+// ── Templates menu ─────────────────────────────────────────────────────────────
+function buildTemplatesMenu() {
+  document.getElementById('dd-templates-menu').innerHTML =
+    TEMPLATES.map((t, i) => `
+      <div class="dd-item" onclick="applyTemplate(${i})">
+        ${esc(t.name)}
+        <div class="sub">${esc(t.sub)}</div>
+      </div>`).join('');
+}
+
+function applyTemplate(i) {
+  if (!confirm('Load template? Unsaved changes will be lost.')) return;
+  currentId = null;
+  document.getElementById('sketch-name').value = TEMPLATES[i].name;
+  editor.setValue(TEMPLATES[i].code);
+  markUnsaved();
+  toggleDD('dd-templates');
+  runSketch();
+}
+
+// ── Sketches CRUD ──────────────────────────────────────────────────────────────
+async function loadSketches() {
+  const r = await fetch('/api/sketches');
+  sketches = await r.json();
+}
+
+async function saveSketch() {
+  const name = document.getElementById('sketch-name').value.trim() || 'Untitled Sketch';
+  const code = editor.getValue();
+
+  if (currentId) {
+    await fetch(`/api/sketches/${currentId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, code })
+    });
+    const s = sketches.find(x => x.id === currentId);
+    if (s) { s.name = name; s.updated_at = new Date().toISOString(); }
+  } else {
+    const r = await fetch('/api/sketches', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, code })
+    });
+    const s = await r.json();
+    currentId = s.id;
+    sketches.unshift(s);
+  }
+
+  markSaved();
+  toast('Saved ✓');
+}
+
+async function saveSketchName() {
+  if (!currentId) return;
+  const name = document.getElementById('sketch-name').value.trim();
+  if (!name) return;
+  await fetch(`/api/sketches/${currentId}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name })
+  });
+  const s = sketches.find(x => x.id === currentId);
+  if (s) s.name = name;
+}
+
+async function openSketch(id) {
+  const r = await fetch(`/api/sketches/${id}`);
+  const s = await r.json();
+  currentId = s.id;
+  document.getElementById('sketch-name').value = s.name;
+  editor.setValue(s.code);
+  markSaved();
+  closeModal('modal-sketches');
+  runSketch();
+}
+
+async function deleteSketch(e, id) {
+  e.stopPropagation();
+  if (!confirm('Delete this sketch?')) return;
+  await fetch(`/api/sketches/${id}`, { method: 'DELETE' });
+  sketches = sketches.filter(s => s.id !== id);
+  if (currentId === id) currentId = null;
+  renderSketchModal();
+  toast('Deleted');
+}
+
+// ── Sketch modal ───────────────────────────────────────────────────────────────
+async function openSketchModal() {
+  await loadSketches();
+  renderSketchModal();
+  document.getElementById('modal-sketches').classList.add('open');
+}
+
+function renderSketchModal() {
+  const el = document.getElementById('modal-sketch-body');
+  if (!sketches.length) {
+    el.innerHTML = '<div class="modal-empty">No saved sketches yet</div>';
+    return;
+  }
+  el.innerHTML = sketches.map(s => `
+    <div class="sk-item ${s.id === currentId ? 'cur' : ''}" onclick="openSketch('${s.id}')">
+      <div>
+        <div class="sk-name">${esc(s.name)}</div>
+        <div class="sk-date">${new Date(s.updated_at).toLocaleString()}</div>
+      </div>
+      <button class="sk-del" onclick="deleteSketch(event,'${s.id}')">×</button>
+    </div>`).join('');
+}
+
+function closeModal(id)        { document.getElementById(id).classList.remove('open'); }
+function maybeCloseModal(e,id) { if (e.target === document.getElementById(id)) closeModal(id); }
+
+// ── Run / Preview ──────────────────────────────────────────────────────────────
+function buildHTML(code) {
+  const safeCode = String(code).replace(/<\/script>/gi, '<\\/script>');
+  const needsSound = /\b(p5\.AudioIn|p5\.FFT|getAudioContext|userStartAudio|soundFormats|loadSound)\b/.test(code);
+  const soundTag = needsSound
+    ? '<script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.4/addons/p5.sound.min.js"><\\/script>'
+    : '';
+
+  return `<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>*{margin:0;padding:0;box-sizing:border-box}body{overflow:hidden;background:#000}canvas{display:block}</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.4/p5.min.js"><\/script>
+${soundTag}
+</head>
+<body>
+<div id="preview-error" style="display:none;position:fixed;left:12px;right:12px;top:12px;z-index:9999;padding:10px 12px;border:1px solid #ff6b6b;background:rgba(28,0,0,0.9);color:#ffd7d7;font:12px/1.4 monospace;white-space:pre-wrap;border-radius:6px"></div>
+<script>
+(() => {
+  const box = document.getElementById('preview-error');
+  const show = (msg) => {
+    if (!box) return;
+    box.style.display = 'block';
+    box.textContent = 'Export error: ' + msg;
+  };
+  window.addEventListener('error', (e) => show(e.message || String(e.error || e)));
+  window.addEventListener('unhandledrejection', (e) => {
+    const reason = e.reason && (e.reason.message || e.reason);
+    show(reason || 'Unhandled promise rejection');
+  });
+  setTimeout(() => {
+    if (!window.p5) show('p5.js failed to load. If you are offline, exported HTML using CDN scripts will appear blank.');
+  }, 1200);
+})();
+<\/script>
+<script>
+${safeCode}
+<\/script>
+</body>
+</html>`;
+}
+
+function runSketch() {
+  document.getElementById('run-code').value = editor.getValue();
+  document.getElementById('run-form').submit();
+  document.getElementById('preview-ph').style.display = 'none';
+  setStatus('on', 'Running');
+}
+
+function setStatus(cls, txt) {
+  document.getElementById('s-dot').className = 's-dot ' + cls;
+  document.getElementById('s-status').textContent = txt;
+}
+
+// ── Fullscreen ─────────────────────────────────────────────────────────────────
+let fsBlobUrl = null;
+
+function enterFullscreen() {
+  document.getElementById('fs-code').value = editor.getValue();
+  document.getElementById('fs-form').submit();
+  document.getElementById('fs-overlay').classList.add('open');
+}
+function exitFullscreen() {
+  document.getElementById('fs-overlay').classList.remove('open');
+  document.getElementById('fs-frame').src = 'about:blank';
+}
+
+// ── Export ─────────────────────────────────────────────────────────────────────
+function exportSketch() {
+  const name  = document.getElementById('sketch-name').value.trim() || 'sketch';
+  const html  = buildHTML(editor.getValue());
+  const blob  = new Blob([html], { type: 'text/html' });
+  const url   = URL.createObjectURL(blob);
+  const a     = Object.assign(document.createElement('a'), { href: url, download: name.replace(/\s+/g, '-').toLowerCase() + '.html' });
+  a.click();
+  URL.revokeObjectURL(url);
+  toast('Exported ✓');
+}
+
+// ── AI Generation ──────────────────────────────────────────────────────────────
+async function generateCode() {
+  if (isGenerating) return;
+  const instruction = document.getElementById('ai-instr').value.trim();
+  if (!instruction) return;
+
+  const model = document.getElementById('model-sel').value;
+  const prevCode = editor.getValue();
+
+  isGenerating = true;
+  const genBtn = document.getElementById('btn-gen');
+  genBtn.disabled = true;
+  genBtn.textContent = 'Generating…';
+
+  const outEl = document.getElementById('ai-out');
+  outEl.className = 'ai-out live';
+  outEl.textContent = '';
+
+  let rawText = '';
+
+  try {
+    const res = await fetch('/api/ai', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code: prevCode, instruction, model })
+    });
+
+    const reader  = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buf = '', streamDone = false;
+
+    while (!streamDone) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buf += decoder.decode(value, { stream: true });
+      const lines = buf.split('\n\n');
+      buf = lines.pop();
+      for (const line of lines) {
+        if (!line.startsWith('data: ')) continue;
+        try {
+          const d = JSON.parse(line.slice(6));
+          if (d.token) { rawText += d.token; outEl.textContent = rawText; outEl.scrollTop = outEl.scrollHeight; }
+          if (d.done || d.error) { streamDone = true; break; }
+        } catch {}
+      }
+    }
+
+    // Extract code, strip any accidental markdown fences
+    const code = extractCode(rawText);
+
+    // Store undo, apply, run
+    undoStack = prevCode;
+    document.getElementById('btn-undo2').disabled = false;
+    editor.setValue(code);
+    outEl.className = 'ai-out';
+    outEl.textContent = code;
+    runSketch();
+    markUnsaved();
+
+    // History
+    aiHistory.unshift(instruction);
+    if (aiHistory.length > 10) aiHistory.pop();
+    renderHistory();
+    document.getElementById('ai-instr').value = '';
+    toast('Applied ✓');
+
+  } catch (err) {
+    outEl.className = 'ai-out';
+    outEl.textContent = 'Error: ' + err.message;
+    setStatus('err', 'Error');
+  }
+
+  isGenerating = false;
+  genBtn.disabled = false;
+  genBtn.textContent = 'Generate';
+}
+
+function extractCode(text) {
+  const m = text.match(/```(?:javascript|js)?\n?([\s\S]*?)```/);
+  return (m ? m[1] : text).trim();
+}
+
+function performUndo() {
+  if (!undoStack) return;
+  editor.setValue(undoStack);
+  undoStack = null;
+  document.getElementById('btn-undo2').disabled = true;
+  runSketch();
+  toast('Undone');
+}
+
+function renderHistory() {
+  const el = document.getElementById('ai-history');
+  el.innerHTML = aiHistory.length
+    ? aiHistory.map((h, i) => `<div class="h-item" title="${esc(h)}" onclick="reusePrompt(${i})">${esc(h)}</div>`).join('')
+    : '<div class="h-empty">History will appear here</div>';
+}
+
+function reusePrompt(i) {
+  document.getElementById('ai-instr').value = aiHistory[i];
+  document.getElementById('ai-instr').focus();
+}
+
+// ── Dropdown ───────────────────────────────────────────────────────────────────
+function toggleDD(id) {
+  const el = document.getElementById(id);
+  const was = el.classList.contains('open');
+  document.querySelectorAll('.dd.open').forEach(d => d.classList.remove('open'));
+  if (!was) el.classList.add('open');
+}
+
+// ── Save status ────────────────────────────────────────────────────────────────
+function markUnsaved() {
+  const el = document.getElementById('s-save');
+  el.textContent = '● Unsaved';
+  el.className = 's-right s-unsaved';
+}
+function markSaved() {
+  const el = document.getElementById('s-save');
+  el.textContent = 'Saved';
+  el.className = 's-right';
+}
+
+// ── Toast ──────────────────────────────────────────────────────────────────────
+let toastT;
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(toastT);
+  toastT = setTimeout(() => el.classList.remove('show'), 2200);
+}
+
+// ── Util ───────────────────────────────────────────────────────────────────────
+function esc(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+                  .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,13 @@
+[Unit]
+Description=p5 Vibe Coder
+After=network.target
+
+[Service]
+User=bencpi
+WorkingDirectory=/home/bencpi/Documents/code/p5vibe
+ExecStart=/home/bencpi/Documents/code/p5vibe/venv/bin/python app.py
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
